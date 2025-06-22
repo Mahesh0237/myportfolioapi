@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GenderOptions {
+  Male
+  Female
+  Other
+}
+
+enum Userstatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum UserType {
+  user
+  employee
+  guest
+}
+
+model Users {
+  id                        BigInt                @id @default(autoincrement())
+  diaries                   Diaries[]
+  user_type                 UserType?             @default(user)
+  uuid                      String?               @unique @db.VarChar(500)
+  name                      String?               @db.VarChar(255)
+  email                     String?               @unique @db.VarChar(255)
+  profile_image             String?
+  profile_image_path        String?
+  password                  String?               @db.VarChar(255)
+  phone_code                String?               @db.VarChar(10)
+  phone                     String?               @db.VarChar(100)
+  gender                    GenderOptions?
+  users_status              Userstatus?           @default(Active)
+  reporting_head_id         BigInt?
+  role_id                   BigInt?
+  otp                       String?               @db.VarChar(10)
+  is_verified               Boolean?              @default(false)
+  otp_expiry                DateTime?             @db.Timestamptz
+  createdAt                 DateTime              @default(now()) @db.Timestamptz
+  updatedAt                 DateTime?             @db.Timestamptz
+  joinedAt                  DateTime?             @db.Timestamptz
+  reporting_head_details    Users?                @relation("reporting_head", fields: [reporting_head_id], references: [id])
+  subordinate               Users[]               @relation("reporting_head")
+  roledetails               Roles?                @relation("role", fields: [role_id], references: [id])
+  senderchats               Chats[]               @relation("sender")
+  receiverchats             Chats[]               @relation("receiver")
+  diarycomments             Diarycomments[]
+  diaryinvitations_sender   Diaryinvitations[]    @relation("sender_invitation")
+  diaryinvitations_receiver Diaryinvitations[]    @relation("receiver_invitation")
+  Sharediariesbylink        Sharediariesbylink[]
+  SubscriptionDiaries       Subscriptiondiaries[]
+  Siglediarypagelikes       Siglediarypagelikes[]
+  diarylike                 Diarylikes[]
+  Followeddiaries           Followeddiaries[]
+  usernotification          Usernotification[]    @relation("users_notification")
+  Diarypages                Diarypages[]
+
+  @@index([name], name: "users_name_index")
+  @@index([phone_code, phone], name: "users_phone_index")
+  @@map("users")
+}
+
+enum Rolestatus {
+  Active
+  Inactive
+}
+
+model Roles {
+  id           BigInt      @id @default(autoincrement())
+  name         String?     @db.VarChar(255)
+  default_role Boolean?    @default(false)
+  status       Rolestatus? @default(Active)
+  soft_delete  Boolean?    @default(false)
+  createdAt    DateTime?   @default(now()) @db.Timestamptz
+  updatedAt    DateTime?   @db.Timestamptz
+  userdetails  Users[]     @relation("role")
+
+  @@index([name], name: "roles_name_index")
+  @@map("roles")
+}
+
+model Rolepermissions {
+  id          BigInt    @id @default(autoincrement())
+  role_id     BigInt?   @db.BigInt
+  permissions String?   @db.Text
+  createdAt   DateTime? @default(now()) @db.Timestamptz
+  updatedAt   DateTime? @db.Timestamptz
+
+  @@index([role_id], name: "rolepermissions_role_id_index")
+  @@map("role_permissions")
+}
+
+model Country {
+  id              BigInt    @id @default(autoincrement())
+  name            String?   @db.VarChar(250)
+  iso3            String?   @db.VarChar(3)
+  iso2            String?   @db.VarChar(2)
+  phone_code      String?   @db.VarChar(10)
+  currency        String?   @db.VarChar(100)
+  currency_symbol String?   @db.VarChar(10)
+  latitude        Decimal?  @db.Decimal(10, 8)
+  longitude       Decimal?  @db.Decimal(11, 8)
+  flag            String?   @db.Text
+  timezone_name   String?   @db.VarChar(255)
+  timezone_utc    String?   @db.VarChar(255)
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime? @db.Timestamptz
+
+  @@index([name], name: "country_name")
+  @@index([phone_code], name: "phone_code")
+  @@map("countries")
+}
+
+enum Diarystatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum DiaryType {
+  Individual
+  Group
+  Subscription
+}
+
+model Diaries {
+  id                  BigInt                @id @default(autoincrement())
+  uuid                String?               @unique
+  user_id             BigInt?
+  name                String?
+  featured_image_url  String?
+  featured_image_path String?
+  category_id         BigInt?
+  is_private          Boolean?
+  diary_type          DiaryType?            @default(Individual)
+  is_featured_diary   Boolean?              @default(false)
+  status              Diarystatus?          @default(Active)
+  created_at          DateTime              @default(now()) @db.Timestamptz
+  updated_at          DateTime?             @db.Timestamptz
+  userdetails         Users?                @relation(fields: [user_id], references: [id])
+  category_details    Diarycategories?      @relation(fields: [category_id], references: [id])
+  diarycontent        Diarypages[]
+  diarycomments       Diarycomments[]
+  diaryinvitation     Diaryinvitations[]
+  sharediariesbylink  Sharediariesbylink[]
+  SubscriptionDiaries Subscriptiondiaries[]
+  Siglediarypagelikes Siglediarypagelikes[]
+  diarylike           Diarylikes[]
+  Followeddiaries     Followeddiaries[]
+
+  @@index([name], name: "diary_name")
+  @@map("diaries")
+}
+
+// enum Diary_access_status {
+//   free
+//   paid
+// }
+
+enum DiaryPageStatus {
+  Pending
+  Rejected
+  Draft
+  Published
+  Scheduled
+}
+
+model Diarypages {
+  id              BigInt           @id @default(autoincrement())
+  diary_id        BigInt
+  page_no         Int?
+  content         String?          @db.Text
+  featured_image  String?
+  is_publish_date DateTime?        @db.Timestamptz
+  // diary_access_status Diary_access_status? @default(free)
+  view_count      BigInt?          @default(0)
+  share_count     BigInt?          @default(0)
+  added_by        BigInt?
+  status          DiaryPageStatus? @default(Pending)
+  created_at      DateTime         @default(now()) @db.Timestamptz
+  updated_at      DateTime?        @db.Timestamptz
+
+  diary               Diaries               @relation(fields: [diary_id], references: [id], onDelete: Cascade)
+  Siglediarypagelikes Siglediarypagelikes[]
+  diarycomments       Diarycomments[]
+  added_by_details    Users?                @relation(fields: [added_by], references: [id])
+  // diarypageviews      Diarypageviews[]      @relation("DiaryPageToViews")
+
+  @@map("diary_pages")
+}
+
+model Diarycategories {
+  id         BigInt    @id @default(autoincrement())
+  name       String?
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime? @db.Timestamptz
+  diaries    Diaries[]
+
+  @@map("diary_categories")
+}
+
+model Enquiries {
+  id         BigInt    @id @default(autoincrement())
+  uuid       String?
+  user_id    BigInt?
+  name       String?
+  email      String?
+  mobile     String?
+  message    String?
+  is_guest   Boolean?  @default(true)
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime? @db.Timestamptz
+
+  @@map("enquiries")
+}
+
+model Team {
+  id                 BigInt    @id @default(autoincrement())
+  uuid               String?   @unique
+  profile_image_url  String?
+  profile_image_path String?
+  name               String?
+  designation        String?
+  experience         String?
+  created_at         DateTime  @default(now()) @db.Timestamptz
+  updated_at         DateTime? @db.Timestamptz
+
+  @@map("team")
+}
+
+model Chats {
+  id              BigInt    @id @default(autoincrement())
+  uid             String?   @db.VarChar(255)
+  sender_id       BigInt?
+  receiver_id     BigInt?
+  message         String?
+  is_read         Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime? @db.Timestamptz
+  senderdetails   Users?    @relation("sender", fields: [sender_id], references: [id])
+  receiverdetails Users?    @relation("receiver", fields: [receiver_id], references: [id])
+
+  @@map("chats")
+}
+
+model Diarycomments {
+  id                BigInt          @id @default(autoincrement())
+  diary_id          BigInt
+  single_page_id    BigInt?
+  user_id           BigInt
+  comment           String
+  parent_comment_id BigInt? // For replies (null if it's a top-level comment)
+  likes             Int?            @default(0)
+  created_at        DateTime        @default(now()) @db.Timestamptz
+  updated_at        DateTime?       @db.Timestamptz
+  diary             Diaries?        @relation(fields: [diary_id], references: [id])
+  user              Users?          @relation(fields: [user_id], references: [id])
+  parentComment     Diarycomments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id])
+  commentReplies    Diarycomments[] @relation("CommentReplies")
+  commentLikes      CommentLike[]   @relation("CommentToLikes")
+  diarypagedetails  Diarypages?     @relation(fields: [single_page_id], references: [id])
+
+  @@map("diary_comments")
+}
+
+model CommentLike {
+  id         BigInt   @id @default(autoincrement())
+  uid        String?  @db.VarChar(255)
+  comment_id BigInt
+  user_id    BigInt
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  comment Diarycomments @relation("CommentToLikes", fields: [comment_id], references: [id])
+
+  @@unique([comment_id, user_id]) // Prevent multiple likes by same user
+  @@map("comment_likes")
+}
+
+enum DiaryInvitationStatus {
+  Pending
+  Accepted
+  Rejected
+}
+
+enum DiaryinvitationType {
+  Private
+  Group
+}
+
+model Diaryinvitations {
+  id          BigInt                 @id @default(autoincrement())
+  uuid        String?                @unique
+  diary_id    BigInt
+  sender_id   BigInt
+  receiver_id BigInt
+  type        DiaryinvitationType?   @default(Private)
+  status      DiaryInvitationStatus? @default(Pending)
+  created_at  DateTime               @default(now()) @db.Timestamptz
+  updated_at  DateTime?              @db.Timestamptz
+
+  diary    Diaries? @relation(fields: [diary_id], references: [id])
+  sender   Users?   @relation("sender_invitation", fields: [sender_id], references: [id])
+  receiver Users?   @relation("receiver_invitation", fields: [receiver_id], references: [id])
+
+  @@map("diary_invitations")
+}
+
+model Sharediariesbylink {
+  id           BigInt               @id @default(autoincrement())
+  uuid         String?              @unique
+  diary_id     BigInt
+  user_id      BigInt
+  type         DiaryinvitationType? @default(Private)
+  access_token String?              @unique
+  created_at   DateTime             @default(now()) @db.Timestamptz
+  updated_at   DateTime?            @db.Timestamptz
+
+  diary Diaries? @relation(fields: [diary_id], references: [id])
+  user  Users?   @relation(fields: [user_id], references: [id])
+
+  @@map("shared_diaries_by_link")
+}
+
+model Companyinfo {
+  id              BigInt  @id @default(autoincrement())
+  companyname     String? @db.VarChar(255)
+  address_one     String? @db.Text
+  address_two     String? @db.Text
+  city            String? @db.VarChar(255)
+  state           String? @db.VarChar(255)
+  country         String? @db.VarChar(255)
+  zipcode         String? @db.VarChar(255)
+  phone_code      String?
+  phone           String? @db.VarChar(255)
+  email           String? @db.VarChar(255)
+  white_logo_url  String? @db.VarChar(255)
+  white_logo_path String? @db.VarChar(255)
+  dark_logo_url   String? @db.VarChar(255)
+  dark_logo_path  String? @db.VarChar(255)
+  favicon_url     String? @db.VarChar(255)
+  favicon_path    String? @db.VarChar(255)
+  facebook_url    String? @db.VarChar(255)
+  twitter_url     String? @db.VarChar(255)
+  instagram_url   String? @db.VarChar(255)
+  linkedin_url    String? @db.VarChar(255)
+  youtube_url     String? @db.VarChar(255)
+
+  createdAt DateTime? @default(now()) @db.Timestamptz
+  updatedAt DateTime? @db.Timestamptz
+
+  @@map("company_info")
+}
+
+enum SubscriptionStatus {
+  Active
+  Expired
+  Pending
+}
+
+model Subscriptiondiaries {
+  id         BigInt              @id @default(autoincrement())
+  uuid       String?             @unique
+  user_id    BigInt?
+  diary_id   BigInt?
+  status     SubscriptionStatus? @default(Pending)
+  created_at DateTime            @default(now()) @db.Timestamptz
+  updated_at DateTime?           @db.Timestamptz
+
+  userdetails  Users?   @relation(fields: [user_id], references: [id])
+  diarydetails Diaries? @relation(fields: [diary_id], references: [id])
+
+  @@map("subscription_diaries")
+}
+
+model Siglediarypagelikes {
+  id             BigInt    @id @default(autoincrement())
+  uid            String?   @db.VarChar(255)
+  diary_id       BigInt?
+  single_page_id BigInt?
+  isliked        Boolean?  @default(false)
+  user_id        BigInt
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  updated_at     DateTime? @db.Timestamptz
+
+  userdetails      Users?      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  diarydetails     Diaries?    @relation(fields: [diary_id], references: [id])
+  diarypagedetails Diarypages? @relation(fields: [single_page_id], references: [id])
+
+  @@unique([user_id, single_page_id], name: "user_page_like_unique")
+  @@map("single_diary_page_likes")
+}
+
+model Diarylikes {
+  id         BigInt    @id @default(autoincrement())
+  uid        String?   @db.VarChar(255)
+  diary_id   BigInt?
+  user_id    BigInt
+  isliked    Boolean?  @default(false)
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime? @db.Timestamptz
+
+  userdetails  Users?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  diarydetails Diaries? @relation(fields: [diary_id], references: [id])
+
+  @@unique([user_id, diary_id], name: "user_diary_like_unique")
+  @@map("diary_likes")
+}
+
+enum FolloweddiriesStatus {
+  followed
+  unfollowed
+}
+
+model Followeddiaries {
+  id         BigInt                @id @default(autoincrement())
+  uid        String?               @db.VarChar(255)
+  diary_id   BigInt?
+  user_id    BigInt
+  status     FolloweddiriesStatus? @default(unfollowed)
+  created_at DateTime              @default(now()) @db.Timestamptz
+  updated_at DateTime?             @db.Timestamptz
+
+  userdetails  Users?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  diarydetails Diaries? @relation(fields: [diary_id], references: [id])
+
+  @@unique([user_id, diary_id], name: "user_diary_like_unique")
+  @@map("followed_diaries")
+}
+
+model Usernotification {
+  id              BigInt    @id @default(autoincrement())
+  user_id         BigInt
+  message         String?   @db.Text
+  type            String?   @db.VarChar(255)
+  is_read         Boolean?  @default(false)
+  added_by        BigInt?
+  link            String?
+  createdAt       DateTime? @default(now()) @db.Timestamptz
+  updatedAt       DateTime? @db.Timestamptz
+  added_bydetails Users?    @relation("users_notification", fields: [added_by], references: [id])
+
+  @@map("users_notification")
+}
+
+model Diarypageviews {
+  id             BigInt    @id @default(autoincrement())
+  diary_id       BigInt?
+  single_page_id BigInt?
+  user_id        BigInt?
+  user_type      UserType? @default(guest)
+  last_view_date DateTime? @db.Timestamptz
+  session_token  String?
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  updated_at     DateTime? @db.Timestamptz
+  // diarypage      Diarypages? @relation("DiaryPageToViews", fields: [single_page_id], references: [id])
+
+  @@map("diary_page_views")
+}
